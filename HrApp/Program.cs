@@ -1,4 +1,8 @@
 using HrApp.Data;
+using HrApp.Repositories;
+using HrApp.Repositories.Interfaces;
+using HrApp.Services;
+using HrApp.Services.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,7 +17,38 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddIdentity<IdentityUser, IdentityRole>()
     .AddEntityFrameworkStores<AppDbContext>();
 
+//services registeren
+builder.Services.AddScoped<IIdentityService, IdentityService>();
+builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
+
 builder.Services.AddControllersWithViews();
+
+
+// openid connect
+builder.Services
+        .AddAuthentication(options =>
+        {
+            options.DefaultScheme = "Cookies";
+            options.DefaultChallengeScheme = "oidc";
+        })
+        .AddCookie("Cookies")
+        .AddOpenIdConnect("oidc", options =>
+        {
+            options.Authority = "https://localhost:5001"; // IdentityServer URL
+            options.ClientId = "mvc_client";
+            options.ClientSecret = "secret";
+            options.ResponseType = "code";
+            options.SaveTokens = true;
+            options.Scope.Add("profile");
+            options.Scope.Add("email");
+        })
+        // 2. Google yap?land?rmas?n? buraya ekliyoruz
+        .AddGoogle(options =>
+        {
+            // S?navda hocan?n verece?i de?erler buraya gelecek
+            options.ClientId = "HOCANIN_VERDIGI_GOOGLE_ID";
+            options.ClientSecret = "HOCANIN_VERDIGI_GOOGLE_SECRET";
+        });
 
 var app = builder.Build();
 

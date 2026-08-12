@@ -1,0 +1,97 @@
+﻿@page "/"
+@page "/games"
+@rendermode InteractiveServer
+@inject GameRepository GameRepository
+@inject NavigationManager Navigation
+
+<h3>My Game Collection</h3>
+
+<a href="/games/new" class="btn btn-primary mb-3">Add game</a>
+
+
+
+<div class="row mb-3">
+	<div class="col-md-4">
+		<input type="text" class="form-control" placeholder="Search by title..." @bind="searchTerm" @bind:event="oninput" />
+	</div>
+	<div class="col-md-4">
+		<select class="form-select" @bind="selectedPlatform">
+			<option value="">All Platforms</option>
+			@foreach (var p in Platforms.All)
+			{
+				<option value="@p">@p</option>
+			}
+		</select>
+	</div>
+</div>
+
+@if (!FilteredGames.Any())
+{
+	<p class="text-muted">No games found.</p>
+}
+else
+{
+	<table class="table table-hover">
+		<thead>
+			<tr>
+				<th>Title</th>
+				<th>Platform</th>
+				<th>Genre</th>
+				<th>Year</th>
+				<th>Rating</th>
+				<th></th>
+			</tr>
+		</thead>
+		<tbody>
+			@foreach (var game in FilteredGames)
+			{
+				<tr>
+					<td>@game.Title</td>
+					<td>@game.Platform</td>
+					<td>@game.Genre?.Name</td>
+					<td>@game.ReleaseYear</td>
+					@* <td>@(game.Rating.HasValue ? $"{game.Rating}/10" : "-")</td> *@
+					<td>
+						@if (game.Rating.HasValue)
+						{
+							<span class="text-warning">
+								@for (int i = 0; i < game.Rating; i++)
+								{
+									<span>★</span>
+								}
+								@for (int i = 0; i < 5 - game.Rating; i++)
+								{
+									<span class="text-secondary">☆</span>
+								}
+							</span>
+						}
+						else
+						{
+
+							<span>-</span>
+						}
+					</td>
+					<td>
+						<a href="/games/@game.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
+					</td>
+				</tr>
+			}
+		</tbody>
+	</table>
+}
+
+@code {
+	private IEnumerable<Game> games = [];
+	private string searchTerm = "";
+	private string selectedPlatform = "";
+
+	// Arama terimine göre listeyi anlık filtreleyen özellik
+	private IEnumerable<Game> FilteredGames => games.Where(g =>
+		(string.IsNullOrWhiteSpace(searchTerm) || g.Title.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) &&
+		(string.IsNullOrWhiteSpace(selectedPlatform) || g.Platform == selectedPlatform));
+
+	protected override void OnInitialized()
+	{
+		games = GameRepository.GetAll();
+	}
+}

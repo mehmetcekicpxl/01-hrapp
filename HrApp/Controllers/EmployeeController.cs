@@ -1,42 +1,42 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using HrApp.Data;
 using HrApp.Models;
+using HrApp.Repositories.Interfaces;
 
 namespace HrApp.Controllers
 {
     public class EmployeeController : Controller
     {
-        private readonly AppDbContext _context;
+        private readonly IEmployeeRepository _employeeRepository;
 
-        public EmployeeController(AppDbContext context)
+        // Controller praat alleen met de repository, niet met de database context
+        public EmployeeController(IEmployeeRepository employeeRepository)
         {
-            _context = context;
+            _employeeRepository = employeeRepository;
         }
 
         // GET: Employee
         public async Task<IActionResult> Index()
         {
-              return _context.Employees != null ? 
-                          View(await _context.Employees.ToListAsync()) :
-                          Problem("Entity set 'AppDbContext.Employee'  is null.");
+            var employees = await _employeeRepository.GetAll();
+            return employees != null ?
+                        View(employees) :
+                        Problem("De entiteit set voor werknemers is leeg.");
         }
 
         // GET: Employee/Details/5
         public async Task<IActionResult> Details(int? id)
         {
-            if (id == null || _context.Employees == null)
+            if (id == null)
             {
                 return NotFound();
             }
 
-            var employee = await _context.Employees
-                .FirstOrDefaultAsync(m => m.EmployeeId == id);
+            // Haal de specifieke werknemer op via de repository
+            var employee = await _employeeRepository.GetById(id);
             if (employee == null)
             {
                 return NotFound();
@@ -52,16 +52,14 @@ namespace HrApp.Controllers
         }
 
         // POST: Employee/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("EmployeeId,FirstName,LastName")] Employee employee)
         {
             if (ModelState.IsValid)
             {
-                _context.Add(employee);
-                await _context.SaveChangesAsync();
+                // Voeg de nieuwe werknemer toe
+                await _employeeRepository.Add(employee);
                 return RedirectToAction(nameof(Index));
             }
             return View(employee);
@@ -70,12 +68,12 @@ namespace HrApp.Controllers
         // GET: Employee/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
-            if (id == null || _context.Employees == null)
+            if (id == null)
             {
                 return NotFound();
             }
 
-            var employee = await _context.Employees.FindAsync(id);
+            var employee = await _employeeRepository.GetById(id);
             if (employee == null)
             {
                 return NotFound();
@@ -84,8 +82,6 @@ namespace HrApp.Controllers
         }
 
         // POST: Employee/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, [Bind("EmployeeId,FirstName,LastName")] Employee employee)
@@ -99,12 +95,13 @@ namespace HrApp.Controllers
             {
                 try
                 {
-                    _context.Update(employee);
-                    await _context.SaveChangesAsync();
+                    // Werk de werknemer bij via de repository
+                    await _employeeRepository.Update(employee);
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!EmployeeExists(employee.EmployeeId))
+                    // Gebruik de await keyword omdat de methode nu asynchroon is
+                    if (!await EmployeeExists(employee.EmployeeId))
                     {
                         return NotFound();
                     }
@@ -121,13 +118,12 @@ namespace HrApp.Controllers
         // GET: Employee/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {
-            if (id == null || _context.Employees == null)
+            if (id == null)
             {
                 return NotFound();
             }
 
-            var employee = await _context.Employees
-                .FirstOrDefaultAsync(m => m.EmployeeId == id);
+            var employee = await _employeeRepository.GetById(id);
             if (employee == null)
             {
                 return NotFound();
@@ -141,23 +137,22 @@ namespace HrApp.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            if (_context.Employees == null)
-            {
-                return Problem("Entity set 'AppDbContext.Employee'  is null.");
-            }
-            var employee = await _context.Employees.FindAsync(id);
+            // Zoek eerst de werknemer op voordat we deze verwijderen
+            var employee = await _employeeRepository.GetById(id);
             if (employee != null)
             {
-                _context.Employees.Remove(employee);
+                // Verwijder via de repository in plaats van de context
+                await _employeeRepository.Delete(employee);
             }
-            
-            await _context.SaveChangesAsync();
+
             return RedirectToAction(nameof(Index));
         }
 
-        private bool EmployeeExists(int id)
+        // Hulpmethode om te controleren of de werknemer bestaat in de database
+        private async Task<bool> EmployeeExists(int id)
         {
-          return (_context.Employees?.Any(e => e.EmployeeId == id)).GetValueOrDefault();
+            var employee = await _employeeRepository.GetById(id);
+            return employee != null;
         }
     }
 }

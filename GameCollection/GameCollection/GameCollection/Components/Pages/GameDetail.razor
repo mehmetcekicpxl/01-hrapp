@@ -1,0 +1,138 @@
+﻿@page "/games/new"
+@page "/games/{Id:int}"
+@using Microsoft.JSInterop
+@rendermode InteractiveServer
+@inject GameRepository GameRepository
+@inject GenreRepository GenreRepository
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<h3>@(Id.HasValue ? "Edit game" : "Add game")</h3>
+
+<EditForm Model="model" OnValidSubmit="HandleSubmit">
+	<DataAnnotationsValidator />
+
+	<div class="mb-3">
+		<label class="form-label">Title</label>
+		<InputText @bind-Value="model.Title" class="form-control" />
+		<ValidationMessage For="() => model.Title" />
+	</div>
+
+	<div class="mb-3">
+		<label class="form-label">Platform</label>
+		<InputSelect @bind-Value="model.Platform" class="form-select">
+			<option value="">-- Select a platform --</option>
+			@foreach (var platform in Platforms.All)
+			{
+				<option value="@platform">@platform</option>
+			}
+		</InputSelect>
+		<ValidationMessage For="() => model.Platform" />
+	</div>
+
+	<div class="mb-3">
+		<label class="form-label">Genre</label>
+		<InputSelect @bind-Value="model.GenreId" class="form-select">
+			<option value="">-- Select a genre --</option>
+			@foreach (var genre in genres)
+			{
+				<option value="@genre.Id">@genre.Name</option>
+			}
+		</InputSelect>
+		<ValidationMessage For="() => model.GenreId" />
+	</div>
+
+	<div class="mb-3">
+		<label class="form-label">Release year</label>
+		<InputNumber @bind-Value="model.ReleaseYear" class="form-control" />
+		<ValidationMessage For="() => model.ReleaseYear" />
+	</div>
+
+	<div class="mb-3">
+		<label class="form-label">Rating (1–5, optional)</label>
+		<InputNumber @bind-Value="model.Rating" class="form-control" />
+		<ValidationMessage For="() => model.Rating" />
+	</div>
+
+	<button type="submit" class="btn btn-primary">Save</button>
+	<a href="/games" class="btn btn-secondary ms-2">Cancel</a>
+</EditForm>
+
+@if (Id.HasValue)
+{
+	<hr />
+	<button class="btn btn-danger" @onclick="DeleteGame">Delete game</button>
+}
+
+@code {
+	[Parameter]
+	public int? Id { get; set; }
+
+	private GameModel model = new();
+	private IEnumerable<Genre> genres = [];
+
+	protected override void OnInitialized()
+	{
+		genres = GenreRepository.GetAll();
+
+		if (Id.HasValue)
+		{
+			var game = GameRepository.GetById(Id.Value);
+			if (game != null)
+			{
+				model.Title = game.Title;
+				model.Platform = game.Platform;
+				model.GenreId = game.GenreId;
+				model.ReleaseYear = game.ReleaseYear;
+				model.Rating = game.Rating;
+			}
+		}
+	}
+
+	private void HandleSubmit()
+	{
+		if (Id.HasValue)
+		{
+			var game = GameRepository.GetById(Id.Value);
+			if (game != null)
+			{
+				game.Title = model.Title;
+				game.Platform = model.Platform;
+				game.GenreId = model.GenreId!.Value;
+				game.ReleaseYear = model.ReleaseYear;
+				game.Rating = model.Rating;
+				GameRepository.Update(game);
+			}
+		}
+		else
+		{
+			var game = new Game
+			{
+				Title = model.Title,
+				Platform = model.Platform,
+				GenreId = model.GenreId!.Value,
+				ReleaseYear = model.ReleaseYear,
+				Rating = model.Rating
+			};
+			GameRepository.Add(game);
+		}
+
+		Navigation.NavigateTo("/games");
+	}
+
+	private async Task DeleteGame()
+	{
+		// JS üzerinden tarayıcı onay kutusunu tetikle
+		bool confirmed = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this game?");
+
+		if (confirmed && Id.HasValue)
+		{
+			var game = GameRepository.GetById(Id.Value);
+			if (game != null)
+			{
+				GameRepository.Delete(game);
+				Navigation.NavigateTo("/games");
+			}
+		}
+	}
+}

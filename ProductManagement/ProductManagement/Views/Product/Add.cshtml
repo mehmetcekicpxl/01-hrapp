@@ -1,0 +1,17 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@{
+}
+<h1>New Product Toevoegen</h1>
+<form asp-action="Add" method="post">
+	<div class="mb-3">
+		<label for="Name" class="form-label">Name</label>
+				<input type="text" class="form-control" id="Name" name="Name" />
+	</div>
+	<div class="mb-3">
+		<label for="Price" class="form-label">Price</label>
+		<input type="number" class="form-control" id="Price" name="Price" />
+	</div>
+	<button type="submit" class="btn btn-primary">Add Product</button>
+</form>
